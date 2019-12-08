@@ -33,17 +33,20 @@ class Instruction(abc.ABC):
 
 
 
-class BinaryInstruction(Instruction):
+class Ternarynstruction(Instruction):
     def __init__(self, operator, opcode):
-        super(BinaryInstruction, self).__init__(opcode, 3)
+        super(Ternarynstruction, self).__init__(opcode, 3)
         self._operator = operator
 
     def process(self, memory, startat, parameter_modes):
-        parameter1 = super(BinaryInstruction, self).get_parameter(memory[startat], parameter_modes[0], memory)
-        parameter2 = super(BinaryInstruction, self).get_parameter(memory[startat+1], parameter_modes[1], memory)
-        super(BinaryInstruction, self).set_parameter(memory[startat+2], parameter_modes[2], memory, self._operator(parameter1, parameter2))
+        self.get_input_parameters(memory, startat, parameter_modes)
+        super(Ternarynstruction, self).set_parameter(memory[startat+2], parameter_modes[2], memory, self._operator(self.parameter1, self.parameter2))
 
         return startat + self.parameter_count()
+
+    def get_input_parameters(self, memory, startat, parameter_modes):
+        self.parameter1 = super(Ternarynstruction, self).get_parameter(memory[startat], parameter_modes[0], memory)
+        self.parameter2 = super(Ternarynstruction, self).get_parameter(memory[startat + 1], parameter_modes[1], memory)
 
 class NullaryInstruction(Instruction):
     def __init__(self, opcode):
@@ -53,11 +56,11 @@ class UnaryInstruction(Instruction):
     def __init__(self, opcode):
         super(UnaryInstruction, self).__init__(opcode, 1)
 
-class InstructionAdd(BinaryInstruction):
+class InstructionAdd(Ternarynstruction):
     def __init__(self):
         super(InstructionAdd, self).__init__(operator.add, 1)
 
-class InstructionMultiply(BinaryInstruction):
+class InstructionMultiply(Ternarynstruction):
     def __init__(self):
         super(InstructionMultiply, self).__init__(operator.mul, 2)
 
