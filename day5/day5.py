@@ -43,6 +43,8 @@ class BinaryInstruction(Instruction):
         parameter2 = super(BinaryInstruction, self).get_parameter(memory[startat+1], parameter_modes[1], memory)
         super(BinaryInstruction, self).set_parameter(memory[startat+2], parameter_modes[2], memory, self._operator(parameter1, parameter2))
 
+        return startat + self.parameter_count()
+
 class NullaryInstruction(Instruction):
     def __init__(self, opcode):
         super(NullaryInstruction, self).__init__(opcode, 0)
@@ -50,7 +52,6 @@ class NullaryInstruction(Instruction):
 class UnaryInstruction(Instruction):
     def __init__(self, opcode):
         super(UnaryInstruction, self).__init__(opcode, 1)
-
 
 class InstructionAdd(BinaryInstruction):
     def __init__(self):
@@ -69,6 +70,9 @@ class InstructionStore(UnaryInstruction):
         value = int(input("Input: "))
         super(InstructionStore, self).set_parameter(memory[startat], parameter_modes[0], memory, value)
 
+        return startat + self.parameter_count()
+
+
 class InstructionLoad(UnaryInstruction):
     def __init__(self):
         super(InstructionLoad, self).__init__(4)
@@ -76,6 +80,7 @@ class InstructionLoad(UnaryInstruction):
     def process(self, memory, startat, parameter_modes):
         param = super(InstructionLoad, self).get_parameter(memory[startat], parameter_modes[0], memory)
         print(param)
+        return startat + self.parameter_count()
 
 
 class InstructionHalt(NullaryInstruction):
@@ -83,7 +88,7 @@ class InstructionHalt(NullaryInstruction):
         super(InstructionHalt, self).__init__(99)
 
     def process(self, memory, startat, parameter_modes):
-        return None
+        return startat + self.parameter_count()
 
 
 class IntcodeProcessor:
@@ -100,8 +105,8 @@ class IntcodeProcessor:
 
             instruction_pointer += 1
             assert opcode in self.operations, F"Unknown opcode {opcode}"
-            self.operations[opcode].process(memory, instruction_pointer, parameter_modes)
-            instruction_pointer += self.operations[opcode].parameter_count()
+            next = self.operations[opcode].process(memory, instruction_pointer, parameter_modes)
+            instruction_pointer = next
 
     def split_instruction(self, instruction):
         opcode = instruction % 100
@@ -152,4 +157,4 @@ def puzzle1():
         memory = [int(n) for n in f.read().split(',')]
         run(memory)
 
-puzzle1()
+#puzzle1()
