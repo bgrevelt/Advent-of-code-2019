@@ -43,12 +43,13 @@ class BinaryInstruction(Instruction):
         parameter2 = super(BinaryInstruction, self).get_parameter(memory[startat+1], parameter_modes[1], memory)
         super(BinaryInstruction, self).set_parameter(memory[startat+2], parameter_modes[2], memory, self._operator(parameter1, parameter2))
 
+class NullaryInstruction(Instruction):
+    def __init__(self, opcode):
+        super(NullaryInstruction, self).__init__(opcode, 0)
+
 class UnaryInstruction(Instruction):
     def __init__(self, opcode):
-        super(UnaryInstruction, self).__init__(opcode, 0)
-
-    def process(self, memory, startat, parameter_modes):
-        return None
+        super(UnaryInstruction, self).__init__(opcode, 1)
 
 
 class InstructionAdd(BinaryInstruction):
@@ -59,14 +60,35 @@ class InstructionMultiply(BinaryInstruction):
     def __init__(self):
         super(InstructionMultiply, self).__init__(operator.mul, 2)
 
-class InstructionHalt(UnaryInstruction):
+class InstructionStore(UnaryInstruction):
+    def __init__(self):
+        super(InstructionStore, self).__init__(3)
+
+    def process(self, memory, startat, parameter_modes):
+        param = super(InstructionStore, self).get_parameter(memory[startat], parameter_modes[0], memory)
+        value = int(input("Input: "))
+        super(InstructionStore, self).set_parameter(memory[startat], parameter_modes[0], memory, value)
+
+class InstructionLoad(UnaryInstruction):
+    def __init__(self):
+        super(InstructionLoad, self).__init__(4)
+
+    def process(self, memory, startat, parameter_modes):
+        param = super(InstructionLoad, self).get_parameter(memory[startat], parameter_modes[0], memory)
+        print(param)
+
+
+class InstructionHalt(NullaryInstruction):
     def __init__(self):
         super(InstructionHalt, self).__init__(99)
+
+    def process(self, memory, startat, parameter_modes):
+        return None
 
 
 class IntcodeProcessor:
     def __init__(self):
-        self.operations = {operation.opcode() : operation for operation in [InstructionAdd(), InstructionMultiply(), InstructionHalt()]}
+        self.operations = {operation.opcode() : operation for operation in [InstructionAdd(), InstructionMultiply(), InstructionHalt(), InstructionStore(), InstructionLoad()]}
 
     def Process(self, memory):
         instruction_pointer = 0
