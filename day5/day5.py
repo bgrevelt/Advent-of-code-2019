@@ -51,3 +51,21 @@ class IntcodeProcessor:
             assert opcode in self.operations, F"Unknown opcode {opcode}"
             tokens_consumed = self.operations[opcode].process(memory, instruction_pointer)
             instruction_pointer += tokens_consumed
+
+
+def run(intcodes):
+    proc = IntcodeProcessor()
+    proc.Process(intcodes)
+    return intcodes
+
+class UnitTests(unittest.TestCase):
+    def test_position_mode(self):
+        # add
+        self.assertEqual(run([1,5,6,3,99,25,35]), [1,5,6,60,99,25,35])
+        # mul
+        self.assertEqual(run([2, 5, 6, 3, 99, 25, 35]), [2, 5, 6, 875, 99, 25, 35])
+    def test_immediate_mode(self):
+        # add
+        self.assertEqual(run([1101, 5, 6, 3, 99, 25, 35]), [1101, 5, 6, 11, 99, 25, 35])
+        # mul
+        self.assertEqual(run([1102, 5, 6, 3, 99, 25, 35]), [1, 5, 6, 30, 99, 25, 35])
