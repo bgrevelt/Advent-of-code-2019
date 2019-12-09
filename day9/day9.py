@@ -10,7 +10,7 @@ class Instruction(abc.ABC):
         return self._opcode
 
     @abc.abstractmethod
-    def process(self, memory, startat, parameter_modes, input_function, output_function):
+    def process(self, machine_state, parameter_modes):
         pass
 
     def parameter_count(self):
@@ -72,138 +72,137 @@ class InstructionAdd(TernaryInstruction):
     def __init__(self):
         super(InstructionAdd, self).__init__(1)
 
-    def process(self, memory, startat, parameter_modes, input_function, output_function, relative_base):
-        super(InstructionAdd, self).get_parameters(memory, startat, parameter_modes, relative_base)
-        super(InstructionAdd, self).store(self.parameter1 + self.parameter2, memory)
-        return startat + self.parameter_count()
+    def process(self, machine_state, parameter_modes):
+        super(InstructionAdd, self).get_parameters(machine_state.memory, machine_state.instruction_pointer, parameter_modes, machine_state.relative_base)
+        super(InstructionAdd, self).store(self.parameter1 + self.parameter2, machine_state.memory)
+        machine_state.instruction_pointer += self.parameter_count()
 
 
 class InstructionMultiply(TernaryInstruction):
     def __init__(self):
         super(InstructionMultiply, self).__init__(2)
 
-    def process(self, memory, startat, parameter_modes, input_function, output_function, relative_base):
-        super(InstructionMultiply, self).get_parameters(memory, startat, parameter_modes, relative_base)
-        super(InstructionMultiply, self).store(self.parameter1 * self.parameter2, memory)
-        return startat + self.parameter_count()
+    def process(self, machine_state, parameter_modes):
+        super(InstructionMultiply, self).get_parameters(machine_state.memory, machine_state.instruction_pointer, parameter_modes, machine_state.relative_base)
+        super(InstructionMultiply, self).store(self.parameter1 * self.parameter2, machine_state.memory)
+        machine_state.instruction_pointer += self.parameter_count()
 
 class InstructionStore(UnaryInstruction):
     def __init__(self):
         super(InstructionStore, self).__init__(3)
 
-    def process(self, memory, startat, parameter_modes, input_function, output_function, relative_base):
-        param = super(InstructionStore, self).get_parameter(memory[startat], parameter_modes[0], memory, relative_base)
-        value = input_function()
-        super(InstructionStore, self).set_parameter(memory[startat], parameter_modes[0], memory, value, relative_base)
+    def process(self, machine_state, parameter_modes):
+        param = super(InstructionStore, self).get_parameter(machine_state.memory[machine_state.instruction_pointer], parameter_modes[0], machine_state.memory, machine_state.relative_base)
+        assert len(machine_state.input) > 0, "Input function called but there is no input"
+        value = machine_state.input[0]
+        input_function = machine_state.input[1:]
+        super(InstructionStore, self).set_parameter(machine_state.memory[machine_state.instruction_pointer], parameter_modes[0], machine_state.memory, value, machine_state.relative_base)
 
-        return startat + self.parameter_count()
+        machine_state.instruction_pointer += self.parameter_count()
 
 class InstructionLoad(UnaryInstruction):
     def __init__(self):
         super(InstructionLoad, self).__init__(4)
 
-    def process(self, memory, startat, parameter_modes, input_function, output_function, relative_base):
-        param = super(InstructionLoad, self).get_parameter(memory[startat], parameter_modes[0], memory, relative_base)
-        output_function(param)
-        return startat + self.parameter_count()
+    def process(self, machine_state, parameter_modes):
+        param = super(InstructionLoad, self).get_parameter(machine_state.memory[machine_state.instruction_pointer], parameter_modes[0], machine_state.memory, machine_state.relative_base)
+        machine_state.output.append(param)
+        machine_state.instruction_pointer += self.parameter_count()
 
 class InstructionJumpIfTrue(BinaryInstruction):
     def __init__(self):
         super(InstructionJumpIfTrue, self).__init__(5)
 
-    def process(self, memory, startat, parameter_modes, input_function, output_function, relative_base):
-        self.get_parameters(memory, startat, parameter_modes, relative_base)
+    def process(self, machine_state, parameter_modes):
+        self.get_parameters(machine_state.memory, machine_state.instruction_pointer, parameter_modes, machine_state.relative_base)
         if(self.parameter1 != 0):
-            return self.parameter2
+            machine_state.instruction_pointer = self.parameter2
         else:
-            return startat + self.parameter_count()
+            machine_state.instruction_pointer += self.parameter_count()
 
 class InstructionJumpIfFalse(BinaryInstruction):
     def __init__(self):
         super(InstructionJumpIfFalse, self).__init__(6)
 
-    def process(self, memory, startat, parameter_modes, input_function, output_function, relative_base):
-        self.get_parameters(memory, startat, parameter_modes, relative_base)
+    def process(self, machine_state, parameter_modes):
+        self.get_parameters(machine_state.memory, machine_state.instruction_pointer, parameter_modes, machine_state.relative_base)
         if(self.parameter1 == 0):
-            return self.parameter2
+            machine_state.instruction_pointer = self.parameter2
         else:
-            return startat + self.parameter_count()
+            machine_state.instruction_pointer += self.parameter_count()
 
 class InstructionLessThen(TernaryInstruction):
     def __init__(self):
         super(InstructionLessThen, self).__init__(7)
 
-    def process(self, memory, startat, parameter_modes, input_function, output_function, relative_base):
-        self.get_parameters(memory, startat, parameter_modes, relative_base)
-        super(InstructionLessThen, self).store(1 if self.parameter1 < self.parameter2 else 0, memory)
+    def process(self, machine_state, parameter_modes):
+        self.get_parameters(machine_state.memory, machine_state.instruction_pointer, parameter_modes, machine_state.relative_base)
+        super(InstructionLessThen, self).store(1 if self.parameter1 < self.parameter2 else 0, machine_state.memory)
 
-        return startat + self.parameter_count()
+        machine_state.instruction_pointer += self.parameter_count()
 
 class InstructionEquals(TernaryInstruction):
     def __init__(self):
         super(InstructionEquals, self).__init__(8)
 
-    def process(self, memory, startat, parameter_modes, input_function, output_function, relative_base):
-        self.get_parameters(memory, startat, parameter_modes, relative_base)
-        super(InstructionEquals, self).store(1 if self.parameter1 == self.parameter2 else 0, memory)
+    def process(self, machine_state, parameter_modes):
+        self.get_parameters(machine_state.memory, machine_state.instruction_pointer, parameter_modes, machine_state.relative_base)
+        super(InstructionEquals, self).store(1 if self.parameter1 == self.parameter2 else 0, machine_state.memory)
 
-        return startat + self.parameter_count()
+        machine_state.instruction_pointer += self.parameter_count()
 
 class InstructionAdjustRelativeBase(UnaryInstruction):
     def __init__(self):
         super(InstructionAdjustRelativeBase, self).__init__(9)
 
-    def process(self, memory, startat, parameter_modes, input_function, output_function, relative_base):
-        param = super(InstructionAdjustRelativeBase, self).get_parameter(memory[startat], parameter_modes[0], memory, relative_base)
+    def process(self, machine_state, parameter_modes):
+        param = super(InstructionAdjustRelativeBase, self).get_parameter(machine_state.memory[machine_state.instruction_pointer], parameter_modes[0], machine_state.memory, machine_state.relative_base)
 
-        #todo this is a terrible hack. Just for this insturction I'm going to return both new counter value and the new relative base
-        return (startat + self.parameter_count(), param)
+        machine_state.instruction_pointer += self.parameter_count()
+        machine_state.relative_base += param
 
 class InstructionHalt(NullaryInstruction):
     def __init__(self):
         super(InstructionHalt, self).__init__(99)
 
-    def process(self, memory, startat, parameter_modes, input_function, output_function, relative_base):
-        return startat + self.parameter_count()
+    def process(self, machine_state, parameter_modes):
+        machine_state.instruction_pointer += self.parameter_count()
 
 
 class IntcodeProcessor:
+    class State:
+        def __init__(self):
+            self.input = []
+            self.output = []
+            self.memory = []
+            self.instruction_pointer = 0
+            self.relative_base = 0
+
     def __init__(self, program, input = []):
         self.operations = {operation.opcode() : operation for operation in [InstructionAdd(), InstructionMultiply(), InstructionHalt(), InstructionStore(), InstructionLoad(), InstructionJumpIfFalse(), InstructionJumpIfTrue(), InstructionLessThen(), InstructionEquals(), InstructionAdjustRelativeBase() ]}
-        self.output = []
-        self.input = input
-        self.memory = program
-        self.instruction_pointer = 0
-        self.relative_base = 0
+        self.state = self.State()
+        self.state.input = input
+        self.state.memory = program
 
     def Process(self):
         while True:
-            #print(self.instruction_pointer)
-            opcode, parameter_modes = self.split_instruction(self.memory[self.instruction_pointer])
+            opcode, parameter_modes = self.split_instruction(self.state.memory[self.state.instruction_pointer])
             if opcode == 99:
                 return 'HALT'
 
-            self.instruction_pointer += 1
+            self.state.instruction_pointer += 1
             assert opcode in self.operations, F"Unknown opcode {opcode}"
-            next = self.operations[opcode].process(self.memory, self.instruction_pointer, parameter_modes, self.get_input, self.write_output, self.relative_base)
-
-            #todo This is a horrible hack and I feel bad for it
-            if opcode == 9:
-                self.instruction_pointer = next[0]
-                self.relative_base += next[1]
-            else:
-                self.instruction_pointer = next
+            self.operations[opcode].process(self.state, parameter_modes)
 
 
     def get_input(self):
-        assert len(self.input) > 0, "Instruction needs input, but input is empty!"
-        v = self.input[0]
-        self.input = self.input[1:]
+        assert len(self.state.input) > 0, "Instruction needs input, but input is empty!"
+        v = self.state.input[0]
+        self.state.input = self.state.input[1:]
         return v
 
     def write_output(self, value):
-        print('output ', value)
-        self.output.append(value)
+        self.state.output.append(value)
 
     def split_instruction(self, instruction):
         opcode = instruction % 100
@@ -218,7 +217,7 @@ def run(intcodes):
     proc = IntcodeProcessor(intcodes + ([0] * 10**3))
     while proc.Process() != 'HALT':
         pass
-    return proc.memory[:len(intcodes)]
+    return proc.state.memory[:len(intcodes)]
 
 class IntcodeProcessorTests(unittest.TestCase):
     def test_position_mode(self):
@@ -256,8 +255,8 @@ class IntcodeProcessorTests(unittest.TestCase):
             proc = IntcodeProcessor(memory, [1])
             while proc.Process() != 'HALT':
                 pass
-            self.assertTrue(all(v == 0 for v in proc.output[:-1]))
-            self.assertEqual(proc.output[-1], 9219874)
+            self.assertTrue(all(v == 0 for v in proc.state.output[:-1]))
+            self.assertEqual(proc.state.output[-1], 9219874)
 
     def test_day5_puzzle2(self):
         with open('../day5/input.txt') as f:
@@ -265,17 +264,40 @@ class IntcodeProcessorTests(unittest.TestCase):
             proc = IntcodeProcessor(memory, [5])
             while proc.Process() != 'HALT':
                 pass
-            self.assertEqual(proc.output, [5893654])
+            self.assertEqual(proc.state.output, [5893654])
+
+    def test_day9_puzzle1(self):
+        with open('input.txt') as f:
+            memory = [int(n) for n in f.read().split(',')]
+            memory += [0] * 10**3
+            proc = IntcodeProcessor(memory, [1])
+            proc.Process()
+            self.assertEqual(proc.state.output[-1], 2890527621)
+
+    def test_day9_puzzle2(self):
+        with open('input.txt') as f:
+            memory = [int(n) for n in f.read().split(',')]
+            memory += [0] * 10 ** 3
+            proc = IntcodeProcessor(memory, [2])
+            proc.Process()
+            self.assertEqual(proc.state.output[-1], 66772)
 
 
 
 def puzzle1(input):
+    p = IntcodeProcessor(input + ([0] * 10**3), [1])
+    p.Process()
+    return p.state.output[-1]
+
+def puzzle2(input):
+    p = IntcodeProcessor(input + ([0] * 10**3), [2])
+    p.Process()
+    return p.state.output[-1]
+
+if __name__ == "__main__":
     with open('input.txt') as f:
-        p = IntcodeProcessor(input + ([0] * 10**3), [1])
-        p.Process()
-        print(p.output)
+        c1 = [int(n) for n in f.read().split(',')]
+        c2 = [n for n in c1]
+        print(F"The answer to puzzle 1 is {puzzle1(c1)}")
+        print(F"The answer to puzzle 2 is {puzzle2(c2)}")
 
-with open('input.txt') as f:
-    puzzle1([int(n) for n in f.read().split(',')])
-
-#puzzle1([109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99])
